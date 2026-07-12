@@ -22,7 +22,9 @@ from ui_theme import (  # noqa: E402
     MODEL_META,
     STAGE_META,
     card_title_html,
+    chip_html,
     eyebrow_html,
+    floating_pill_html,
     icon_svg,
     probability_bars_html,
     stage_badge_html,
@@ -101,19 +103,16 @@ with st.sidebar:
                     unsafe_allow_html=True,
                 )
 
-    st.markdown("---")
-    st.caption("Growth stages")
-    for stage in STAGE_META:
-        st.markdown(stage_badge_html(stage), unsafe_allow_html=True)
-
 # ------------------------------------------------------------- hero header --
+chips = "".join(chip_html(stage) for stage in STAGE_META)
 st.markdown(
     f"""
-    <div class="hero-banner">
+    <div class="hero-section">
       {eyebrow_html("RESEARCH DEMO &middot; DUAL-BRANCH FUSION MODEL")}
       <div class="title-row">{icon_svg("fruit", size=30)}<h1>Tomato Growth-Stage <span class="accent">Classifier</span></h1></div>
       <p>Fusing Branch 02 (ResNet50 visual features) with Branch 01 (U-Net leaf-coverage signal) to identify
       seeding, developing, flowering, and fruiting stages from a single photo.</p>
+      <div class="chip-row">{chips}</div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -150,17 +149,17 @@ mask_thumb = to_square_thumbnail(Image.fromarray(mask_uint8).convert("RGB"))
 col_img, col_mask = st.columns(2)
 with col_img:
     st.markdown(f'<div class="card">{card_title_html("image", "Input image", "--model-a")}', unsafe_allow_html=True)
-    st.markdown('<div class="thumb-wrap">', unsafe_allow_html=True)
+    st.markdown('<div class="photo-frame">', unsafe_allow_html=True)
     st.image(input_thumb, width=THUMB_SIZE)
     st.markdown("</div></div>", unsafe_allow_html=True)
 with col_mask:
+    st.markdown(f'<div class="card">{card_title_html("layers", "U-Net leaf segmentation", "--model-b")}', unsafe_allow_html=True)
+    st.markdown('<div class="photo-frame">', unsafe_allow_html=True)
+    st.image(mask_thumb, width=THUMB_SIZE)
     st.markdown(
-        f'<div class="card">{card_title_html("layers", "U-Net leaf segmentation", "--model-b")}'
-        f'<p class="subtitle">Leaf Pixel Fraction (LPF) = {result["lpf"]:.4f}</p>',
+        floating_pill_html("droplet", f'LPF {result["lpf"]:.4f}', "--model-b"),
         unsafe_allow_html=True,
     )
-    st.markdown('<div class="thumb-wrap">', unsafe_allow_html=True)
-    st.image(mask_thumb, width=THUMB_SIZE)
     st.markdown("</div></div>", unsafe_allow_html=True)
 
 # ------------------------------------------------------ headline result -----
