@@ -1,0 +1,42 @@
+{
+  "architecture": "resnet50",
+  "modifications": "torchvision resnet50 (ImageNet1K_V2 pretrained) with the final fc layer replaced by nn.Linear(2048, 4); full network fine-tuned (no frozen backbone).",
+  "input_size": [224, 224, 3],
+  "num_classes": 4,
+  "class_names": ["developing", "flowering", "fruiting", "seeding"],
+  "class_names_note": "This is the ACTUAL order the model was trained with (alphabetical), NOT growth-stage chronological order (seedling->developing->flowering->fruiting). Output logit index i corresponds to class_names[i]. Note the on-disk/training class is spelled 'seeding', not 'seedling'.",
+  "normalization": {
+    "mean": [0.485, 0.456, 0.406],
+    "std": [0.229, 0.224, 0.225],
+    "note": "Standard ImageNet stats, used because the backbone is ImageNet-pretrained. Inference preprocessing: Resize(256) -> CenterCrop(224) -> ToTensor -> Normalize(mean, std)."
+  },
+  "training": {
+    "epochs_run": 20,
+    "best_epoch": 17,
+    "optimizer": "Adam",
+    "learning_rate": 0.0001,
+    "lr_scheduler": "ReduceLROnPlateau(mode='min', factor=0.5, patience=2, monitored=val_loss)",
+    "batch_size": 32,
+    "loss": "CrossEntropyLoss",
+    "augmentation": "RandomResizedCrop(224, scale=(0.8,1.0)), RandomHorizontalFlip, RandomRotation(15), ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2)",
+    "seed": 42,
+    "train_images": 687,
+    "val_images": 135,
+    "test_images": 160
+  },
+  "dataset_split_methodology": "The notebook loads dataset/<class>/train/, dataset/<class>/valid/, and dataset/<class>/test/ as three SEPARATE datasets (via a custom SplitFolderDataset in dataset_utils.py) instead of pooling all images and re-splitting randomly. Only train/ is used for gradient updates, only valid/ is used for checkpoint/model selection (best val_acc), and test/ is held out entirely until final evaluation. Verified no duplicate-content or near-duplicate (same source photo, different augmentation) images leak across splits, by MD5 hash and by Roboflow source-filename matching across all 982 images. Also verified no class overlap issue after a manual dataset fix on 2026-07-10 that moved 2 mislabeled images from flowering/train to fruiting/train (this checkpoint was trained AFTER that fix).",
+  "test_accuracy": 0.9563,
+  "per_class_metrics": {
+    "developing": {"precision": 0.95, "recall": 1.00, "f1": 0.98, "support": 41},
+    "flowering":  {"precision": 0.96, "recall": 0.92, "f1": 0.94, "support": 60},
+    "fruiting":   {"precision": 0.86, "recall": 0.90, "f1": 0.88, "support": 21},
+    "seeding":    {"precision": 1.00, "recall": 1.00, "f1": 1.00, "support": 38}
+  },
+  "val_accuracy_at_best_epoch": 0.9556,
+  "training_date": "2026-07-10",
+  "framework": {
+    "torch": "2.6.0+cu124",
+    "torchvision": "0.21.0+cu124"
+  },
+  "source_checkpoint": "checkpoints/resnet50_best.pt (dict with model_state_dict, class_names, epoch, val_acc; re-exported here as a plain state_dict only)"
+}

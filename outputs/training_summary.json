@@ -1,0 +1,14 @@
+{
+  "A_resnet_only": {
+    "best_val_acc": 0.9555555582046509,
+    "best_epoch": 7
+  },
+  "B_lpf_only": {
+    "best_val_acc": 0.800000011920929,
+    "best_epoch": 9
+  },
+  "C_fused": {
+    "best_val_acc": 0.9629629254341125,
+    "best_epoch": 6
+  }
+}

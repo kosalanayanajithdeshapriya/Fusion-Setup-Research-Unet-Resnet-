@@ -1,0 +1,26 @@
+# Training dataset (~5.7GB) — not for git
+tomato final dataset/
+
+# Large backbone checkpoints (94MB + 31MB) — see README for how to obtain
+inputs/*.pth
+
+# Derived/intermediate pipeline artifacts, regenerable via scripts/01 and 02
+outputs/*.npz
+
+# Backup produced during LPF refresh troubleshooting
+inputs/lpf_full_dataset_backup_before_refresh.csv
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Streamlit secrets, if ever added
+.streamlit/secrets.toml
+
+# Editor/tooling
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,5 @@
+| model                 |   developing_true_predicted_flowering |   developing_true_predicted_flowering_rate |   flowering_true_predicted_developing |   flowering_true_predicted_developing_rate |
+|:----------------------|--------------------------------------:|-------------------------------------------:|--------------------------------------:|-------------------------------------------:|
+| Model A (ResNet-only) |                                     0 |                                   0        |                                     1 |                                  0.0166667 |
+| Model B (LPF-only)    |                                    22 |                                   0.536585 |                                     8 |                                  0.133333  |
+| Model C (Fused)       |                                     0 |                                   0        |                                     1 |                                  0.0166667 |

@@ -1,0 +1,11 @@
+tomato final dataset/
+outputs/
+results/plots/
+inputs/lpf_full_dataset*.csv
+scripts/0*.py
+scripts/dataset_index.py
+.git
+.gitignore
+__pycache__/
+*.pyc
+.streamlit/secrets.toml

@@ -1,0 +1,14 @@
+*
+!app/
+!inputs/*.py
+!inputs/*.json
+!inputs/*.pth
+!scripts/model_common.py
+!checkpoints/
+!results/tables/comparison_summary.csv
+!.streamlit/
+!requirements.txt
+!Dockerfile
+**/__pycache__/
+**/*.pyc
+.streamlit/secrets.toml
