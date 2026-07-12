@@ -156,4 +156,4 @@ This repository is the fusion stage of the [Tomato Plant Growth Stage Monitoring
 
 ## License
 
-[Add your license here]
+Released under the MIT License.
