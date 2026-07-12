@@ -129,14 +129,16 @@ html, body, [class*="css"] { font-family: 'Inter', system-ui, -apple-system, "Se
   padding: 2.1rem 2.3rem;
   margin-bottom: 1.4rem;
 }
-.hero-banner .title-row { display: flex; align-items: center; gap: 0.7rem; }
-.hero-banner .title-row .icon { width: 32px; height: 32px; color: var(--brand-green); }
+.hero-banner .title-row { display: flex; align-items: flex-start; gap: 0.7rem; flex-wrap: wrap; }
+.hero-banner .title-row .icon { width: 32px; height: 32px; color: var(--brand-green); flex-shrink: 0; margin-top: 0.3rem; }
 .hero-banner h1 {
-  margin: 0; font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 800;
-  color: var(--text-primary); letter-spacing: -0.01em;
+  margin: 0; font-family: 'Outfit', sans-serif; font-size: clamp(1.5rem, 4.5vw, 2rem); font-weight: 800;
+  color: var(--text-primary); letter-spacing: -0.01em; line-height: 1.15;
 }
 .hero-banner h1 .accent { color: var(--brand-green); }
 .hero-banner p { margin: 0.6rem 0 0; color: var(--text-secondary); font-size: 0.96rem; max-width: 620px; }
+
+.result-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
 
 .card {
   background: var(--surface-card);
@@ -155,6 +157,7 @@ html, body, [class*="css"] { font-family: 'Inter', system-ui, -apple-system, "Se
 .thumb-wrap { display: flex; justify-content: center; }
 .thumb-wrap [data-testid="stImage"] img {
   border-radius: 10px; border: 1px solid var(--border);
+  max-width: 100%; height: auto;
 }
 
 .stage-badge, .stage-badge-lg {
@@ -168,9 +171,9 @@ html, body, [class*="css"] { font-family: 'Inter', system-ui, -apple-system, "Se
 .stage-badge-lg .icon { width: 22px; height: 22px; }
 
 .confidence-tag {
-  display: inline-block; margin-left: 0.6rem; padding: 0.2rem 0.6rem;
+  display: inline-block; padding: 0.2rem 0.6rem;
   border-radius: 999px; background: var(--border); color: var(--text-secondary);
-  font-size: 0.8rem; font-weight: 600; font-variant-numeric: tabular-nums;
+  font-size: 0.8rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 
 .prob-row { display: flex; align-items: center; gap: 0.6rem; margin: 0.35rem 0; }
@@ -202,6 +205,18 @@ html, body, [class*="css"] { font-family: 'Inter', system-ui, -apple-system, "Se
 }
 
 .sidebar-title { display: flex; align-items: center; gap: 0.5rem; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--text-primary); margin-bottom: 0.3rem; }
+
+@media (max-width: 640px) {
+  .hero-banner { padding: 1.5rem 1.4rem; border-radius: 16px; }
+  .hero-banner p { font-size: 0.9rem; }
+  .eyebrow { font-size: 0.66rem; padding: 0.26rem 0.7rem; }
+  .card { padding: 0.85rem 1rem; border-radius: 13px; }
+  .stage-badge-lg { font-size: 1.1rem; padding: 0.45rem 1rem; }
+  .stage-badge-lg .icon { width: 19px; height: 19px; }
+  .prob-label { flex-basis: 84px; font-size: 0.75rem; }
+  .prob-value { flex-basis: 36px; font-size: 0.74rem; }
+  .section-title { font-size: 0.95rem; }
+}
 </style>
 """
 

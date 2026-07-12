@@ -171,8 +171,10 @@ st.markdown(
 )
 st.markdown(
     f'''<div class="card" style="text-align:center; padding:1.6rem;">
-      {stage_badge_html(fused["predicted_class"], large=True)}
-      <span class="confidence-tag">{fused["confidence"]:.1%} confidence</span>
+      <div class="result-row" style="justify-content:center;">
+        {stage_badge_html(fused["predicted_class"], large=True)}
+        <span class="confidence-tag">{fused["confidence"]:.1%} confidence</span>
+      </div>
       <div style="max-width:400px; margin:1rem auto 0;">
         {probability_bars_html(class_names, fused["probabilities"])}
       </div>
@@ -209,8 +211,10 @@ for col, name in zip(cols, MODEL_ORDER):
               {eyebrow_html(meta["eyebrow"], meta["var"])}
               <h3>{meta["label"]}</h3>
               <p class="subtitle">{meta["subtitle"]}</p>
-              {stage_badge_html(pred["predicted_class"])}
-              <span class="confidence-tag">{pred["confidence"]:.1%}</span>
+              <div class="result-row">
+                {stage_badge_html(pred["predicted_class"])}
+                <span class="confidence-tag">{pred["confidence"]:.1%}</span>
+              </div>
               <div style="margin-top:0.8rem;">
                 {probability_bars_html(class_names, pred["probabilities"])}
               </div>
