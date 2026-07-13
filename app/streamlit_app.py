@@ -21,14 +21,16 @@ sys.path.insert(0, str(ROOT / "app"))
 from inference import FusionPredictor  # noqa: E402
 from ui_theme import (  # noqa: E402
     CUSTOM_CSS,
-    HERO_ILLUSTRATION,
     MODEL_META,
     STAGE_META,
     card_title_html,
     chip_html,
     eyebrow_html,
     floating_pill_html,
+    footer_html,
+    hero_photo_grid_html,
     icon_svg,
+    insight_panel_html,
     probability_bars_html,
     stage_badge_html,
 )
@@ -36,6 +38,7 @@ from ui_theme import (  # noqa: E402
 MODEL_ORDER = ["A_resnet_only", "B_lpf_only", "C_fused"]
 COMPARISON_CSV = ROOT / "results" / "tables" / "comparison_summary.csv"
 FAVICON = ROOT / "app" / "assets" / "favicon.png"
+HERO_DIR = ROOT / "app" / "assets" / "hero"
 THUMB_SIZE = 220
 
 st.set_page_config(page_title="Tomato Growth-Stage Classifier", page_icon=str(FAVICON), layout="wide")
@@ -71,6 +74,18 @@ def image_data_uri(image: Image.Image) -> str:
     buf = io.BytesIO()
     image.save(buf, format="PNG")
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
+
+
+@st.cache_data
+def get_hero_photo_uris():
+    """Real dataset sample photos (one per growth stage, test split) for the
+    hero collage, encoded once and cached for the life of the process."""
+    uris = {}
+    for stage in STAGE_META:
+        path = HERO_DIR / f"{stage}.jpg"
+        if path.exists():
+            uris[stage] = "data:image/jpeg;base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+    return uris
 
 
 def photo_frame_html(image: Image.Image, pill_html: str = "") -> str:
@@ -137,7 +152,7 @@ st.markdown(
         seeding, developing, flowering, and fruiting stages from a single photo.</p>
         <div class="chip-row">{chips}</div>
       </div>
-      <div class="hero-illustration">{HERO_ILLUSTRATION}</div>
+      {hero_photo_grid_html(get_hero_photo_uris())}
     </div>
     """,
     unsafe_allow_html=True,
@@ -200,7 +215,7 @@ st.markdown(
           <span class="confidence-tag">{fused["confidence"]:.1%} confidence</span>
         </div>
         <div class="result-right">
-          {probability_bars_html(class_names, fused["probabilities"])}
+          {probability_bars_html(class_names, fused["probabilities"], fused["predicted_class"])}
         </div>
       </div>
     </div>''',
@@ -220,6 +235,17 @@ else:
         f'All three models agree on this prediction.</div>',
         unsafe_allow_html=True,
     )
+
+# -------------------------------------------------------- model insight -----
+resnet_pred = predictions["A_resnet_only"]
+st.markdown(
+    f'<div class="section-title">{icon_svg("git-merge", size=17)} Model insight — what each branch contributes</div>',
+    unsafe_allow_html=True,
+)
+st.markdown(
+    insight_panel_html(resnet_pred["predicted_class"], resnet_pred["confidence"], result["lpf"]),
+    unsafe_allow_html=True,
+)
 
 # ----------------------------------------------------- model comparison -----
 st.markdown(
@@ -241,8 +267,11 @@ for col, name in zip(cols, MODEL_ORDER):
                 <span class="confidence-tag">{pred["confidence"]:.1%}</span>
               </div>
               <div style="margin-top:0.8rem;">
-                {probability_bars_html(class_names, pred["probabilities"])}
+                {probability_bars_html(class_names, pred["probabilities"], pred["predicted_class"])}
               </div>
             </div>''',
             unsafe_allow_html=True,
         )
+
+# ------------------------------------------------------------------ footer --
+st.markdown(footer_html(), unsafe_allow_html=True)
