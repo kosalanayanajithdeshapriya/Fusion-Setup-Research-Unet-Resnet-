@@ -5,6 +5,8 @@ side by side, with the Fused model's result presented as the headline answer.
 Usage:
     streamlit run app/streamlit_app.py
 """
+import base64
+import io
 import sys
 import tempfile
 from pathlib import Path
@@ -19,6 +21,7 @@ sys.path.insert(0, str(ROOT / "app"))
 from inference import FusionPredictor  # noqa: E402
 from ui_theme import (  # noqa: E402
     CUSTOM_CSS,
+    HERO_ILLUSTRATION,
     MODEL_META,
     STAGE_META,
     card_title_html,
@@ -64,6 +67,25 @@ def to_square_thumbnail(image: Image.Image, size: int = THUMB_SIZE) -> Image.Ima
     return image.crop((left, top, left + size, top + size))
 
 
+def image_data_uri(image: Image.Image) -> str:
+    buf = io.BytesIO()
+    image.save(buf, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
+
+
+def photo_frame_html(image: Image.Image, pill_html: str = "") -> str:
+    """Single unified HTML block (image embedded as a data URI) so the
+    floating pill is a real DOM child of .photo-frame — required for
+    `position: absolute` to anchor correctly, which a split
+    st.markdown()+st.image() pair does not reliably guarantee."""
+    uri = image_data_uri(image)
+    return (
+        f'<div class="photo-frame">'
+        f'<img src="{uri}" style="width:100%; height:auto; display:block;"/>'
+        f'{pill_html}</div>'
+    )
+
+
 # ---------------------------------------------------------------- sidebar ---
 with st.sidebar:
     st.markdown(
@@ -107,18 +129,21 @@ with st.sidebar:
 chips = "".join(chip_html(stage) for stage in STAGE_META)
 st.markdown(
     f"""
-    <div class="hero-section">
-      {eyebrow_html("RESEARCH DEMO &middot; DUAL-BRANCH FUSION MODEL")}
-      <div class="title-row">{icon_svg("fruit", size=30)}<h1>Tomato Growth-Stage <span class="accent">Classifier</span></h1></div>
-      <p>Fusing Branch 02 (ResNet50 visual features) with Branch 01 (U-Net leaf-coverage signal) to identify
-      seeding, developing, flowering, and fruiting stages from a single photo.</p>
-      <div class="chip-row">{chips}</div>
+    <div class="hero-row">
+      <div class="hero-text">
+        {eyebrow_html("RESEARCH DEMO &middot; DUAL-BRANCH FUSION MODEL")}
+        <h1>Tomato Growth-Stage <span class="accent">Classifier</span></h1>
+        <p>Fusing Branch 02 (ResNet50 visual features) with Branch 01 (U-Net leaf-coverage signal) to identify
+        seeding, developing, flowering, and fruiting stages from a single photo.</p>
+        <div class="chip-row">{chips}</div>
+      </div>
+      <div class="hero-illustration">{HERO_ILLUSTRATION}</div>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-uploaded = st.file_uploader("Upload a tomato plant image", type=["jpg", "jpeg", "png"])
+uploaded = st.file_uploader("Upload a tomato plant image — JPG or PNG, one plant per photo", type=["jpg", "jpeg", "png"])
 
 if uploaded is None:
     st.info("Upload a .jpg / .jpeg / .png image to get a prediction.")
@@ -148,34 +173,35 @@ mask_thumb = to_square_thumbnail(Image.fromarray(mask_uint8).convert("RGB"))
 # --------------------------------------------------------- image + mask -----
 col_img, col_mask = st.columns(2)
 with col_img:
-    st.markdown(f'<div class="card">{card_title_html("image", "Input image", "--model-a")}', unsafe_allow_html=True)
-    st.markdown('<div class="photo-frame">', unsafe_allow_html=True)
-    st.image(input_thumb, width=THUMB_SIZE)
-    st.markdown("</div></div>", unsafe_allow_html=True)
-with col_mask:
-    st.markdown(f'<div class="card">{card_title_html("layers", "U-Net leaf segmentation", "--model-b")}', unsafe_allow_html=True)
-    st.markdown('<div class="photo-frame">', unsafe_allow_html=True)
-    st.image(mask_thumb, width=THUMB_SIZE)
     st.markdown(
-        floating_pill_html("droplet", f'LPF {result["lpf"]:.4f}', "--model-b"),
+        f'<div class="card">{card_title_html("image", "Input image", "--model-a")}'
+        f'{photo_frame_html(input_thumb)}</div>',
         unsafe_allow_html=True,
     )
-    st.markdown("</div></div>", unsafe_allow_html=True)
+with col_mask:
+    pill = floating_pill_html("droplet", f'LPF {result["lpf"]:.4f}', "--model-b")
+    st.markdown(
+        f'<div class="card">{card_title_html("layers", "U-Net leaf segmentation", "--model-b")}'
+        f'{photo_frame_html(mask_thumb, pill)}</div>',
+        unsafe_allow_html=True,
+    )
 
 # ------------------------------------------------------ headline result -----
 fused = predictions["C_fused"]
 st.markdown(
-    f'<div class="section-title">{icon_svg("git-merge", size=17)} Final prediction — Fused model</div>',
+    f'<div class="section-title">{icon_svg("git-merge", size=17)} Final prediction — fused model</div>',
     unsafe_allow_html=True,
 )
 st.markdown(
-    f'''<div class="card" style="text-align:center; padding:1.6rem;">
-      <div class="result-row" style="justify-content:center;">
-        {stage_badge_html(fused["predicted_class"], large=True)}
-        <span class="confidence-tag">{fused["confidence"]:.1%} confidence</span>
-      </div>
-      <div style="max-width:400px; margin:1rem auto 0;">
-        {probability_bars_html(class_names, fused["probabilities"])}
+    f'''<div class="card">
+      <div class="result-split">
+        <div class="result-left">
+          {stage_badge_html(fused["predicted_class"], large=True)}
+          <span class="confidence-tag">{fused["confidence"]:.1%} confidence</span>
+        </div>
+        <div class="result-right">
+          {probability_bars_html(class_names, fused["probabilities"])}
+        </div>
       </div>
     </div>''',
     unsafe_allow_html=True,
@@ -207,7 +233,7 @@ for col, name in zip(cols, MODEL_ORDER):
     with col:
         st.markdown(
             f'''<div class="card model-card" style="--card-accent: var({meta["var"]});">
-              {eyebrow_html(meta["eyebrow"], meta["var"])}
+              {eyebrow_html(meta["eyebrow"])}
               <h3>{meta["label"]}</h3>
               <p class="subtitle">{meta["subtitle"]}</p>
               <div class="result-row">
