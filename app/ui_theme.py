@@ -40,6 +40,7 @@ ICONS = {
     "upload": '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
     "cpu": '<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>',
     "shield-check": '<path d="M12 2 L20 6 L20 12 C20 17 16.5 20.5 12 22 C7.5 20.5 4 17 4 12 L4 6 Z"/><polyline points="9 12 11 14 15 10"/>',
+    "star": '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="currentColor" stroke="none"/>',
     # growth stages (custom filled glyphs)
     "seed": '<ellipse cx="12" cy="14" rx="4" ry="6" transform="rotate(15 12 14)" fill="currentColor" stroke="none"/><path d="M12 8c0-3 2-5 4-5" fill="none"/>',
     "leaf": '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>',
@@ -77,6 +78,11 @@ MODEL_META = {
         "var": "--model-c", "short": "C", "label": "Fused",
         "eyebrow": "MODEL C · FUSION", "subtitle": "ResNet50 + U-Net combined",
     },
+    "D_leaf_pipeline": {
+        "var": "--model-d", "short": "D", "label": "Leaf-Focused Pipeline",
+        "eyebrow": "MODEL D · SEGMENT + CLASSIFY", "subtitle": "DeepLabV3 leaf mask + masked ResNet50",
+        "recommended": True,
+    },
 }
 
 CUSTOM_CSS = """
@@ -105,6 +111,7 @@ CUSTOM_CSS = """
   --model-a: #1D4ED8;
   --model-b: #3D7A3D;
   --model-c: #A3195B;
+  --model-d: #B45309;
 }
 
 /* ============================== page chrome ============================== */
@@ -179,7 +186,17 @@ section[data-testid="stSidebar"] { background: #F6EFE2; }
   box-shadow: var(--shadow);
   margin-bottom: 0.9rem;
 }
-.model-card { box-shadow: 0 10px 24px color-mix(in srgb, var(--card-accent, var(--model-a)) 16%, transparent); border: 1px solid color-mix(in srgb, var(--card-accent, var(--model-a)) 30%, transparent); }
+.model-card { box-shadow: 0 10px 24px color-mix(in srgb, var(--card-accent, var(--model-a)) 16%, transparent); border: 1px solid color-mix(in srgb, var(--card-accent, var(--model-a)) 30%, transparent); position: relative; }
+.model-card.recommended { border-width: 2px; }
+.recommended-ribbon {
+  position: absolute; top: -11px; right: 1.1rem;
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  background: var(--model-d); color: #ffffff;
+  padding: 0.22rem 0.7rem; border-radius: 999px;
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--model-d) 45%, transparent);
+}
+.recommended-ribbon .icon { width: 11px; height: 11px; }
 .card h3 {
   font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 700; margin: 0 0 0.6rem;
   color: var(--text-primary); display: flex; align-items: center; gap: 0.55rem;
@@ -636,3 +653,7 @@ def page_header_html(icon_name, title, description, color_var="--brand-terracott
       <h1>{title}</h1>
       <p>{description}</p>
     </div>'''
+
+
+def recommended_ribbon_html(text="Recommended"):
+    return f'<div class="recommended-ribbon">{icon_svg("star", size=11)} {text}</div>'

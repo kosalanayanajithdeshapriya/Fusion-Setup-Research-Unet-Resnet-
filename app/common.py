@@ -4,6 +4,7 @@ same real figures (dataset counts, test accuracy, LPF ranges) rather than
 each page recomputing or re-typing them independently.
 """
 import base64
+import json
 import sys
 from pathlib import Path
 
@@ -22,11 +23,14 @@ RESULTS_PLOTS = RESULTS_DIR / "plots"
 LPF_CSV = INPUTS_DIR / "lpf_full_dataset.csv"
 COMPARISON_CSV = RESULTS_TABLES / "comparison_summary.csv"
 BOUNDARY_CSV = RESULTS_TABLES / "developing_flowering_boundary.csv"
+LEAF_PIPELINE_METADATA_JSON = INPUTS_DIR / "leaf_pipeline_metadata.json"
 
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-MODEL_ORDER = ["A_resnet_only", "B_lpf_only", "C_fused"]
+# Model D is featured/default per its real, deployment-realistic accuracy
+# (see get_leaf_pipeline_metadata) — listed first everywhere.
+MODEL_ORDER = ["D_leaf_pipeline", "A_resnet_only", "B_lpf_only", "C_fused"]
 
 
 @st.cache_data
@@ -71,7 +75,27 @@ def get_lpf_ranges():
 
 
 @st.cache_data
+def get_leaf_pipeline_metadata():
+    """Model D's real metrics, as reported in inputs/leaf_pipeline_metadata.json
+    (a self-contained checkpoint export, not produced by scripts/04_evaluate.py,
+    so it's kept as its own artifact rather than merged into comparison_summary.csv)."""
+    if not LEAF_PIPELINE_METADATA_JSON.exists():
+        return None
+    with open(LEAF_PIPELINE_METADATA_JSON) as f:
+        return json.load(f)
+
+
+@st.cache_data
 def get_test_accuracy(model_key):
+    """Test accuracy as a percentage. Model D's headline number is the
+    deployment-realistic full_pipeline_test_accuracy (predicted masks, not
+    the oracle ground-truth-mask figure) — see get_leaf_pipeline_metadata."""
+    if model_key == "D_leaf_pipeline":
+        meta = get_leaf_pipeline_metadata()
+        if meta is None:
+            return None
+        return meta["full_pipeline_test_accuracy"] * 100
+
     from ui_theme import MODEL_META
     stats = get_comparison_stats()
     if stats is None:

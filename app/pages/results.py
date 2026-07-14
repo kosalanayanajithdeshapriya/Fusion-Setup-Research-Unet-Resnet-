@@ -12,18 +12,60 @@ import streamlit as st
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "app"))
-from common import RESULTS_PLOTS, get_boundary_stats, get_comparison_stats  # noqa: E402
-from ui_theme import STAGE_META, card_title_html, footer_html, page_header_html  # noqa: E402
+from common import RESULTS_PLOTS, get_boundary_stats, get_comparison_stats, get_leaf_pipeline_metadata  # noqa: E402
+from ui_theme import STAGE_META, card_title_html, footer_html, icon_svg, page_header_html, recommended_ribbon_html  # noqa: E402
 
 st.markdown(
     page_header_html(
         "bar-chart",
         "Results",
-        "Test-set ablation study (n = 160, held out) comparing ResNet-only, LPF-only, and the fused model.",
+        "Test-set ablation study (n = 160, held out) comparing ResNet-only, LPF-only, the fused model, "
+        "and the recommended leaf-focused pipeline.",
     ),
     unsafe_allow_html=True,
 )
 
+# ---------------------------------- Model D: recommended, evaluated separately --
+leaf_meta = get_leaf_pipeline_metadata()
+if leaf_meta is not None:
+    full_acc = leaf_meta["full_pipeline_test_accuracy"] * 100
+    oracle_acc = leaf_meta["oracle_ground_truth_mask_test_accuracy"] * 100
+    seg_iou = leaf_meta["segmentation_model"]["test_mean_iou"] * 100
+    st.markdown(
+        f'''<div class="card model-card recommended" style="--card-accent: var(--model-d);">
+          {recommended_ribbon_html("Recommended · Model D")}
+          {card_title_html("shield-check", "Leaf-Focused Pipeline (DeepLabV3 + masked ResNet50)", "--model-d")}
+          <p class="subtitle">Evaluated separately from the A/B/C ablation below — a self-contained
+          two-stage pipeline, not a fusion of the same features.</p>
+          <div class="stats-row" style="border-top:none; padding-top:0; margin-top:0;">
+            <div class="stat-block">
+              <span class="icon-chip" style="--chip-color: var(--model-d)">{icon_svg("star", size=19)}</span>
+              <div><div class="stat-block-value">{full_acc:.1f}%</div>
+              <div class="stat-block-label">Full-pipeline test accuracy</div></div>
+            </div>
+            <div class="stat-block">
+              <span class="icon-chip" style="--chip-color: var(--model-b)">{icon_svg("layers", size=19)}</span>
+              <div><div class="stat-block-value">{seg_iou:.1f}%</div>
+              <div class="stat-block-label">Segmentation mean IoU</div></div>
+            </div>
+            <div class="stat-block">
+              <span class="icon-chip" style="--chip-color: var(--text-muted)">{icon_svg("alert-triangle", size=19)}</span>
+              <div><div class="stat-block-value">{oracle_acc:.1f}%</div>
+              <div class="stat-block-label">Oracle accuracy (not achievable on new images)</div></div>
+            </div>
+          </div>
+          <p style="color:var(--text-secondary); font-size:0.83rem; line-height:1.55; margin:0.9rem 0 0;">
+          {leaf_meta["note"]}
+          </p>
+        </div>''',
+        unsafe_allow_html=True,
+    )
+
+# ---------------------------------------------- A/B/C ablation study --------
+st.markdown(
+    f'<div class="section-title">{icon_svg("bar-chart", size=17)} A / B / C ablation study — overall metrics</div>',
+    unsafe_allow_html=True,
+)
 stats = get_comparison_stats()
 if stats is not None:
     display_cols = ["model", "test_accuracy", "macro_precision", "macro_recall", "macro_f1"]
@@ -32,7 +74,6 @@ if stats is not None:
     for col in table.columns[1:]:
         table[col] = (table[col] * 100).round(2).astype(str) + "%"
 
-    st.markdown(f'<div class="card">{card_title_html("bar-chart", "Ablation study — overall metrics", "--brand-terracotta")}</div>', unsafe_allow_html=True)
     st.dataframe(table, use_container_width=True, hide_index=True)
 
     cols = st.columns(3)

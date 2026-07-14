@@ -1,6 +1,13 @@
 """Home page: hero, upload + how-it-works, and the live demo (upload -> predict
 -> results). This is the page users land on and the one that actually runs
 inference; every other page is informational.
+
+Model D (the leaf-focused segment-then-classify pipeline) is the featured/
+default architecture: it's shown first in the hero copy, headlines the
+"Final prediction" section with a Recommended ribbon, and leads the model
+comparison grid — per its real, deployment-realistic 85.0% full-pipeline
+accuracy (see inputs/leaf_pipeline_metadata.json). Models A/B/C remain fully
+shown as the underlying ablation/comparison study.
 """
 import base64
 import io
@@ -14,7 +21,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "app"))
-from common import get_hero_photo_uris, get_lpf_ranges, get_test_accuracy  # noqa: E402
+from common import MODEL_ORDER, get_hero_photo_uris, get_lpf_ranges, get_test_accuracy  # noqa: E402
 from inference import FusionPredictor  # noqa: E402
 from ui_theme import (  # noqa: E402
     MODEL_META,
@@ -30,13 +37,13 @@ from ui_theme import (  # noqa: E402
     icon_svg,
     insight_panel_html,
     probability_bars_html,
+    recommended_ribbon_html,
     stage_badge_html,
     stage_range_list_html,
     step_flow_html,
     stats_row_html,
 )
 
-MODEL_ORDER = ["A_resnet_only", "B_lpf_only", "C_fused"]
 THUMB_SIZE = 220
 
 # Real, previously-verified example (test-split photo, full pipeline run) —
@@ -80,11 +87,11 @@ def photo_frame_html(image: Image.Image, pill_html: str = "") -> str:
 # ==================================================================== hero ===
 chips = "".join(chip_html(stage) for stage in STAGE_META)
 feature_items = [
-    ("droplet", "Leaf Coverage Estimation", "--model-b"),
-    ("layers", "Leaf Density Analysis", "--model-b"),
+    ("shield-check", "Background-Robust Segmentation", "--model-d"),
+    ("layers", "Leaf Region Masking", "--model-b"),
     ("cpu", "Deep Feature Extraction", "--model-a"),
     ("bar-chart", "Growth Stage Classification", "--brand-terracotta"),
-    ("shield-check", "Explainable AI Prediction", "--model-c"),
+    ("droplet", "Leaf Density Analysis", "--model-b"),
 ]
 cta_buttons = [
     ("Try Live Demo", "arrow-right", "primary", "#upload-a-tomato-plant-image"),
@@ -97,13 +104,15 @@ lpf_ranges = get_lpf_ranges()
 col_text, col_photo, col_ranges = st.columns([1.15, 1, 0.62], gap="medium")
 with col_text:
     st.markdown(
-        f'''{eyebrow_html("RESEARCH PROTOTYPE &middot; DUAL-BRANCH FUSION MODEL")}
+        f'''{eyebrow_html(icon_svg("star", size=12) + " RECOMMENDED &middot; LEAF-FOCUSED SEGMENT + CLASSIFY PIPELINE")}
         <h1 style="font-family:'Outfit',sans-serif; font-weight:800; font-size:clamp(1.6rem,3.6vw,2.3rem); line-height:1.15; margin:0; color:var(--text-primary);">
           Tomato Leaf Density-Based Growth <span class="accent" style="color:var(--brand-terracotta)">Stage Detection</span>
         </h1>
         <p style="color:var(--text-secondary); margin:0.8rem 0 0; font-size:0.98rem; max-width:520px;">
-          A dual-branch deep learning framework that fuses U-Net leaf-coverage estimation with
-          ResNet50 visual features to classify tomato growth stages from a single RGB image.
+          A DeepLabV3 segmentation stage masks out the background, then a ResNet50 classifier
+          reads growth stage from leaf material only — no shortcut through greenhouse or pot
+          context available, which is why its 85% test accuracy is the most realistic number
+          across all four models compared here.
         </p>
         {feature_row_html(feature_items)}
         {cta_row_html(cta_buttons)}
@@ -134,22 +143,21 @@ with col_upload:
     uploaded = st.file_uploader("Upload a tomato plant image — JPG or PNG, one plant per photo", type=["jpg", "jpeg", "png"])
 with col_how:
     steps = [
-        ("upload", "Upload Image", "Input a single tomato plant image"),
-        ("layers", "Dual-Branch Processing", "U-Net (Branch 01) estimates leaf coverage; ResNet50 (Branch 02) extracts visual features"),
-        ("git-merge", "Feature Fusion", "Concatenate the 2048-dim visual vector with the 1-dim LPF signal"),
-        ("bar-chart", "Stage Prediction", "Fusion MLP predicts the growth stage with a confidence score"),
+        ("upload", "Upload Image", "Input a single tomato plant image, any size"),
+        ("layers", "Segment Plant Region", "DeepLabV3 (ResNet50 backbone) predicts a binary plant/background mask"),
+        ("shield-check", "Mask & Classify", "Background is zeroed out; ResNet50 classifies from leaf material only"),
+        ("bar-chart", "Stage Prediction", "Growth stage + confidence, robust to background/environment changes"),
     ]
     st.markdown(
-        f'<div class="card">{card_title_html("cpu", "How It Works", "--model-a")}{step_flow_html(steps)}</div>',
+        f'<div class="card">{card_title_html("cpu", "How the Recommended Pipeline Works", "--model-d")}{step_flow_html(steps)}</div>',
         unsafe_allow_html=True,
     )
 
-acc_a = get_test_accuracy("A_resnet_only")
-acc_c = get_test_accuracy("C_fused")
+acc_d = get_test_accuracy("D_leaf_pipeline")
 stats = [
     ("image", "982", "Total Images", "--model-a"),
     ("leaf", "4", "Growth Stages", "--model-b"),
-    ("bar-chart", f"{acc_c:.1f}%" if acc_c else "—", "Fused Test Accuracy", "--brand-terracotta"),
+    ("star", f"{acc_d:.1f}%" if acc_d else "—", "Recommended Model Accuracy", "--model-d"),
     ("check-circle", "160", "Held-out Test Images", "--model-c"),
 ]
 st.markdown(stats_row_html(stats), unsafe_allow_html=True)
@@ -168,7 +176,7 @@ with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
     tmp_path = tmp.name
 
 try:
-    with st.spinner("Running ResNet50 + U-Net inference..."):
+    with st.spinner("Running segmentation + classification (all 4 models)..."):
         result = predictor.predict(tmp_path)
 finally:
     Path(tmp_path).unlink(missing_ok=True)
@@ -179,40 +187,65 @@ predictions = result["predictions"]
 input_thumb = to_square_thumbnail(Image.open(uploaded))
 mask_uint8 = (np.clip(result["mask"], 0, 1) * 255).astype(np.uint8)
 mask_thumb = to_square_thumbnail(Image.fromarray(mask_uint8).convert("RGB"))
+leaf_mask_uint8 = (np.clip(result["leaf_mask"], 0, 1) * 255).astype(np.uint8)
+leaf_mask_thumb = to_square_thumbnail(Image.fromarray(leaf_mask_uint8).convert("RGB"))
 
-# --------------------------------------------------------- image + mask -----
-col_img, col_mask = st.columns(2)
+# ----------------------------------------------------- image + both masks ---
+col_img, col_leaf_mask, col_unet_mask = st.columns(3)
 with col_img:
     st.markdown(
         f'<div class="card">{card_title_html("image", "Input image", "--model-a")}'
         f'{photo_frame_html(input_thumb)}</div>',
         unsafe_allow_html=True,
     )
-with col_mask:
+with col_leaf_mask:
+    st.markdown(
+        f'<div class="card">{card_title_html("shield-check", "DeepLabV3 plant mask", "--model-d")}'
+        f'<p class="subtitle">Model D\'s segmentation stage</p>'
+        f'{photo_frame_html(leaf_mask_thumb)}</div>',
+        unsafe_allow_html=True,
+    )
+with col_unet_mask:
     pill = floating_pill_html("droplet", f'LPF {result["lpf"]:.4f}', "--model-b")
     st.markdown(
         f'<div class="card">{card_title_html("layers", "U-Net leaf segmentation", "--model-b")}'
+        f'<p class="subtitle">Branch 01 (used by Models B &amp; C)</p>'
         f'{photo_frame_html(mask_thumb, pill)}</div>',
         unsafe_allow_html=True,
     )
 
-# ------------------------------------------------------ headline result -----
-fused = predictions["C_fused"]
+# ---------------------------------------------- headline result (Model D) ---
+featured = predictions["D_leaf_pipeline"]
 st.markdown(
-    f'<div class="section-title">{icon_svg("git-merge", size=17)} Final prediction — fused model</div>',
+    f'<div class="section-title">{icon_svg("star", size=17)} Final prediction — recommended model</div>',
     unsafe_allow_html=True,
 )
 st.markdown(
-    f'''<div class="card">
+    f'''<div class="card model-card recommended" style="--card-accent: var(--model-d);">
+      {recommended_ribbon_html("Recommended · Model D")}
       <div class="result-split">
         <div class="result-left">
-          {stage_badge_html(fused["predicted_class"], large=True)}
-          <span class="confidence-tag">{fused["confidence"]:.1%} confidence</span>
+          {stage_badge_html(featured["predicted_class"], large=True)}
+          <span class="confidence-tag">{featured["confidence"]:.1%} confidence</span>
         </div>
         <div class="result-right">
-          {probability_bars_html(class_names, fused["probabilities"], fused["predicted_class"])}
+          {probability_bars_html(class_names, featured["probabilities"], featured["predicted_class"])}
         </div>
       </div>
+    </div>''',
+    unsafe_allow_html=True,
+)
+st.markdown(
+    f'''<div class="card" style="border-left: 3px solid var(--model-d);">
+      <p style="margin:0; color:var(--text-secondary); font-size:0.85rem; line-height:1.55;">
+      {icon_svg("info", size=13)} <b>Why this model is featured:</b> a whole-image ResNet50 classifier
+      can score higher in raw accuracy, but ablation testing found it partly relies on
+      background/greenhouse context — accuracy on the fruiting class collapsed to 0% once
+      background was removed at evaluation time. This pipeline masks the background out
+      <i>before</i> classifying, so that shortcut isn't available — making its 85.0% test
+      accuracy (using the segmentation model's own predicted masks, not hand-drawn ones) a
+      more honest estimate of performance on new photos from different environments.
+      </p>
     </div>''',
     unsafe_allow_html=True,
 )
@@ -227,14 +260,14 @@ if len(set(predicted_classes.values())) > 1:
 else:
     st.markdown(
         f'<div class="agree-banner ok">{icon_svg("check-circle", size=17)} '
-        f'All three models agree on this prediction.</div>',
+        f'All four models agree on this prediction.</div>',
         unsafe_allow_html=True,
     )
 
-# -------------------------------------------------------- model insight -----
+# ---------------------------------------------- model insight (Model C fusion) --
 resnet_pred = predictions["A_resnet_only"]
 st.markdown(
-    f'<div class="section-title">{icon_svg("git-merge", size=17)} Model insight — what each branch contributes</div>',
+    f'<div class="section-title">{icon_svg("git-merge", size=17)} Model C insight — how the ResNet + U-Net fusion works</div>',
     unsafe_allow_html=True,
 )
 st.markdown(
@@ -247,24 +280,28 @@ st.markdown(
     f'<div class="section-title">{icon_svg("bar-chart", size=17)} Model comparison</div>',
     unsafe_allow_html=True,
 )
-cols = st.columns(3)
+cols = st.columns(4)
 for col, name in zip(cols, MODEL_ORDER):
     pred = predictions[name]
     meta = MODEL_META[name]
     with col:
+        recommended = meta.get("recommended", False)
+        card_class = "card model-card recommended" if recommended else "card model-card"
+        ribbon = recommended_ribbon_html() if recommended else ""
         st.markdown(
-            f'''<div class="card model-card" style="--card-accent: var({meta["var"]});">
-              {eyebrow_html(meta["eyebrow"])}
-              <h3>{meta["label"]}</h3>
-              <p class="subtitle">{meta["subtitle"]}</p>
-              <div class="result-row">
-                {stage_badge_html(pred["predicted_class"])}
-                <span class="confidence-tag">{pred["confidence"]:.1%}</span>
-              </div>
-              <div style="margin-top:0.8rem;">
-                {probability_bars_html(class_names, pred["probabilities"], pred["predicted_class"])}
-              </div>
-            </div>''',
+            f'<div class="{card_class}" style="--card-accent: var({meta["var"]});">'
+            f'{ribbon}'
+            f'{eyebrow_html(meta["eyebrow"])}'
+            f'<h3>{meta["label"]}</h3>'
+            f'<p class="subtitle">{meta["subtitle"]}</p>'
+            f'<div class="result-row">'
+            f'{stage_badge_html(pred["predicted_class"])}'
+            f'<span class="confidence-tag">{pred["confidence"]:.1%}</span>'
+            f'</div>'
+            f'<div style="margin-top:0.8rem;">'
+            f'{probability_bars_html(class_names, pred["probabilities"], pred["predicted_class"])}'
+            f'</div>'
+            f'</div>',
             unsafe_allow_html=True,
         )
 
