@@ -31,7 +31,6 @@ from ui_theme import (  # noqa: E402
     cta_row_html,
     eyebrow_html,
     feature_row_html,
-    floating_pill_html,
     footer_html,
     hero_photo_hero_html,
     icon_svg,
@@ -186,13 +185,13 @@ class_names = result["class_names"]
 predictions = result["predictions"]
 
 input_thumb = to_square_thumbnail(Image.open(uploaded))
-mask_uint8 = (np.clip(result["mask"], 0, 1) * 255).astype(np.uint8)
-mask_thumb = to_square_thumbnail(Image.fromarray(mask_uint8).convert("RGB"))
 leaf_mask_uint8 = (np.clip(result["leaf_mask"], 0, 1) * 255).astype(np.uint8)
 leaf_mask_thumb = to_square_thumbnail(Image.fromarray(leaf_mask_uint8).convert("RGB"))
+deeplab_mask_uint8 = (np.clip(result["deeplab_mask"], 0, 1) * 255).astype(np.uint8)
+deeplab_mask_thumb = to_square_thumbnail(Image.fromarray(deeplab_mask_uint8).convert("RGB"))
 
 # ----------------------------------------------------- image + both masks ---
-col_img, col_leaf_mask, col_unet_mask = st.columns(3)
+col_img, col_leaf_mask, col_deeplab_mask = st.columns(3)
 with col_img:
     st.markdown(
         f'<div class="card">{card_title_html("image", "Input image", "--model-a")}'
@@ -206,12 +205,11 @@ with col_leaf_mask:
         f'{photo_frame_html(leaf_mask_thumb)}</div>',
         unsafe_allow_html=True,
     )
-with col_unet_mask:
-    pill = floating_pill_html("droplet", f'LPF {result["lpf"]:.4f}', "--model-b")
+with col_deeplab_mask:
     st.markdown(
-        f'<div class="card">{card_title_html("layers", "U-Net leaf segmentation", "--model-b")}'
-        f'<p class="subtitle">Branch 01 (used by Models B &amp; C)</p>'
-        f'{photo_frame_html(mask_thumb, pill)}</div>',
+        f'<div class="card">{card_title_html("shield-check", "DeepLabV3 plant mask", "--model-e")}'
+        f'<p class="subtitle">Model E\'s segmentation stage</p>'
+        f'{photo_frame_html(deeplab_mask_thumb)}</div>',
         unsafe_allow_html=True,
     )
 
