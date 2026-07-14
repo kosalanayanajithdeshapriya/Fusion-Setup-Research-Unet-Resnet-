@@ -30,19 +30,22 @@ INPUTS_DIR = ROOT / "inputs"
 
 
 @torch.no_grad()
-def predict_leaf_pipeline_with_mask(image_pil, seg_model, classifier, device):
-    """Mirrors leaf_pipeline.predict_growth_stage() exactly (same transforms,
-    same normalization, same class order) but additionally returns the
-    predicted plant/background mask, so the UI can show it the same way the
-    U-Net branch's mask is shown. Purely additive — inputs/leaf_pipeline.py
-    itself is untouched."""
+def predict_leaf_pipeline_with_mask(image_pil, unet_model, classifier, device):
+    """Mirrors leaf_pipeline.predict_growth_stage() exactly (same crop-aligned
+    transforms, same normalization, same class order) but additionally returns
+    the predicted plant/background mask, so the UI can show it the same way the
+    U-Net LPF branch's mask is shown. Purely additive — inputs/leaf_pipeline.py
+    itself is untouched. The U-Net here returns raw 1-channel logits (not a
+    dict like torchvision's DeepLabV3), so the mask is sigmoid+threshold, not
+    argmax."""
     raw = leaf_pipeline.RAW_TRANSFORM(image_pil.convert("RGB")).unsqueeze(0).to(device)
-    norm = leaf_pipeline.NORMALIZE(raw)
-    pred_mask = seg_model(norm)["out"].argmax(dim=1, keepdim=True).float()
+    normed = leaf_pipeline.NORMALIZE(raw.squeeze(0)).unsqueeze(0)
+    logits = unet_model(normed)
+    pred_mask = (torch.sigmoid(logits) > leaf_pipeline.MASK_THRESHOLD).float()
     masked_raw = raw * pred_mask
-    masked_norm = leaf_pipeline.NORMALIZE(masked_raw)
-    logits = classifier(masked_norm)
-    probs = torch.softmax(logits, dim=1)[0].cpu().numpy()
+    masked_norm = leaf_pipeline.NORMALIZE(masked_raw.squeeze(0)).unsqueeze(0)
+    clf_logits = classifier(masked_norm)
+    probs = torch.softmax(clf_logits, dim=1)[0].cpu().numpy()
     pred_idx = int(probs.argmax())
     mask_np = pred_mask[0, 0].cpu().numpy()
     label = leaf_pipeline.CLASS_NAMES[pred_idx]
@@ -78,7 +81,7 @@ class FusionPredictor:
             self.heads[name] = head
 
         self.leaf_seg_model, self.leaf_classifier = load_leaf_pipeline(
-            str(INPUTS_DIR / "deeplabv3_leaf_seg.pth"),
+            str(INPUTS_DIR / "unet_leaf_seg.pth"),
             str(INPUTS_DIR / "resnet50_leaf_classifier.pth"),
             device=self.device,
         )

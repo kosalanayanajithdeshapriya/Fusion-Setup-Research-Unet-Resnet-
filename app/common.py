@@ -88,13 +88,14 @@ def get_leaf_pipeline_metadata():
 @st.cache_data
 def get_test_accuracy(model_key):
     """Test accuracy as a percentage. Model D's headline number is the
-    deployment-realistic full_pipeline_test_accuracy (predicted masks, not
-    the oracle ground-truth-mask figure) — see get_leaf_pipeline_metadata."""
+    crop-aligned U-Net pipeline's full-pipeline accuracy (its own predicted
+    masks, not hand-drawn ones) from comparison_table.full_pipeline_test_accuracy
+    — see get_leaf_pipeline_metadata."""
     if model_key == "D_leaf_pipeline":
         meta = get_leaf_pipeline_metadata()
         if meta is None:
             return None
-        return meta["full_pipeline_test_accuracy"] * 100
+        return meta["comparison_table"]["full_pipeline_test_accuracy"]["unet_crop_aligned"] * 100
 
     from ui_theme import MODEL_META
     stats = get_comparison_stats()

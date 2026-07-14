@@ -32,9 +32,12 @@ leaf_meta = get_leaf_pipeline_metadata()
 if leaf_meta is not None:
     seg = leaf_meta["segmentation_model"]
     clf = leaf_meta["classifier_model"]
+    ct = leaf_meta["comparison_table"]
+    native_acc = ct["full_pipeline_test_accuracy"]["unet_native"] * 100
+    crop_acc = ct["full_pipeline_test_accuracy"]["unet_crop_aligned"] * 100
     leaf_steps = [
         ("image", "Raw Photo", f"{leaf_meta['input_size'][0]}×{leaf_meta['input_size'][1]}×{leaf_meta['input_size'][2]} RGB, any input size"),
-        ("layers", "DeepLabV3 Segmentation", f"{seg['architecture']} ({seg['num_classes']}-class: background / plant-leaf)"),
+        ("layers", "U-Net Segmentation", f"{seg['architecture']}, {seg['n_parameters']:,} params — {seg['output']}"),
         ("shield-check", "Background Masking", "Background pixels zeroed out using the predicted mask"),
         ("cpu", "ResNet50 Classification", f"fc replaced with Linear(2048, {clf['num_classes']}), trained on masked images only"),
     ]
@@ -43,14 +46,17 @@ if leaf_meta is not None:
           {recommended_ribbon_html("Recommended · Model D")}
           {card_title_html("shield-check", "Model D — Leaf-Focused Segment-then-Classify Pipeline", "--model-d")}
           <p class="subtitle">Two models run in sequence, not a feature-fusion branch — the segmentation
-          stage's own predicted mask feeds directly into the classifier at inference time.</p>
+          stage's own predicted mask feeds directly into the classifier at inference time. Same U-Net
+          checkpoint as Branch 01 below, applied here to mask the classifier's input rather than
+          reduced to a leaf-pixel-fraction scalar.</p>
           {step_flow_html(leaf_steps)}
           <ul style="color:var(--text-secondary); line-height:1.7; margin:1rem 0 0; padding-left:1.1rem; font-size:0.9rem;">
-            <li><b>Segmentation training:</b> COCO polygon annotations of the same tomato photos;
-            best epoch {seg['best_epoch']}, validation IoU {seg['val_iou_at_best_epoch']*100:.1f}%,
-            test mean IoU {seg['test_mean_iou']*100:.1f}%</li>
+            <li><b>Preprocessing (why this beats earlier versions):</b> {seg['preprocessing']} Matching
+            the classifier's own Resize(256)→CenterCrop(224) convention raised full-pipeline accuracy from
+            {native_acc:.1f}% to {crop_acc:.1f}% — segmentation quality barely moved, so the earlier
+            bottleneck was mask/classifier geometry misalignment, not segmentation ability.</li>
             <li><b>Classifier training:</b> {clf['trained_on']} — learns leaf/plant material only,
-            with no background context available</li>
+            with no background context available. {clf['note']}</li>
             <li><b>Normalization:</b> standard ImageNet mean/std, handled internally by
             <code>inputs/leaf_pipeline.py</code></li>
             <li><b>Class order:</b> {", ".join(clf['class_names'])} (alphabetical — the trained order,

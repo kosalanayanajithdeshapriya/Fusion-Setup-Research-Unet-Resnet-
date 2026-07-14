@@ -8,6 +8,7 @@ import base64
 import sys
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -28,13 +29,16 @@ st.markdown(
 # ---------------------------------- Model D: recommended, evaluated separately --
 leaf_meta = get_leaf_pipeline_metadata()
 if leaf_meta is not None:
-    full_acc = leaf_meta["full_pipeline_test_accuracy"] * 100
-    oracle_acc = leaf_meta["oracle_ground_truth_mask_test_accuracy"] * 100
-    seg_iou = leaf_meta["segmentation_model"]["test_mean_iou"] * 100
+    ct = leaf_meta["comparison_table"]
+    full_acc = ct["full_pipeline_test_accuracy"]["unet_crop_aligned"] * 100
+    deeplab_acc = ct["full_pipeline_test_accuracy"]["deeplabv3"] * 100
+    native_acc = ct["full_pipeline_test_accuracy"]["unet_native"] * 100
+    seg_iou = ct["segmentation_both_class_mean_iou"]["unet_crop_aligned"] * 100
+    delta_vs_deeplab = full_acc - deeplab_acc
     st.markdown(
         f'''<div class="card model-card recommended" style="--card-accent: var(--model-d);">
           {recommended_ribbon_html("Recommended · Model D")}
-          {card_title_html("shield-check", "Leaf-Focused Pipeline (DeepLabV3 + masked ResNet50)", "--model-d")}
+          {card_title_html("shield-check", "Leaf-Focused Pipeline (U-Net + masked ResNet50)", "--model-d")}
           <p class="subtitle">Evaluated separately from the A/B/C ablation below — a self-contained
           two-stage pipeline, not a fusion of the same features.</p>
           <div class="stats-row" style="border-top:none; padding-top:0; margin-top:0;">
@@ -46,18 +50,49 @@ if leaf_meta is not None:
             <div class="stat-block">
               <span class="icon-chip" style="--chip-color: var(--model-b)">{icon_svg("layers", size=19)}</span>
               <div><div class="stat-block-value">{seg_iou:.1f}%</div>
-              <div class="stat-block-label">Segmentation mean IoU</div></div>
+              <div class="stat-block-label">Segmentation mean IoU (both classes)</div></div>
             </div>
             <div class="stat-block">
-              <span class="icon-chip" style="--chip-color: var(--text-muted)">{icon_svg("alert-triangle", size=19)}</span>
-              <div><div class="stat-block-value">{oracle_acc:.1f}%</div>
-              <div class="stat-block-label">Oracle accuracy (not achievable on new images)</div></div>
+              <span class="icon-chip" style="--chip-color: var(--brand-green)">{icon_svg("check-circle", size=19)}</span>
+              <div><div class="stat-block-value">+{delta_vs_deeplab:.1f}pp</div>
+              <div class="stat-block-label">vs. previously-featured DeepLabV3 pipeline</div></div>
             </div>
           </div>
           <p style="color:var(--text-secondary); font-size:0.83rem; line-height:1.55; margin:0.9rem 0 0;">
-          {leaf_meta["note"]}
+          {leaf_meta["preprocessing_fix_history"]}
           </p>
         </div>''',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f'<div class="section-title" style="font-size:0.9rem;">{icon_svg("bar-chart", size=15)} '
+        f'Segmenter comparison — identical test set, identical classifier</div>',
+        unsafe_allow_html=True,
+    )
+    per_class = ct["per_class_pipeline_f1"]
+    comp_rows = [
+        ("Full-pipeline accuracy", ct["full_pipeline_test_accuracy"]),
+        ("Developing F1", per_class["developing"]),
+        ("Flowering F1", per_class["flowering"]),
+        ("Fruiting F1", per_class["fruiting"]),
+        ("Seeding F1", per_class["seeding"]),
+    ]
+    comp_df = pd.DataFrame(
+        [
+            {
+                "Metric": name,
+                "DeepLabV3 (previous)": f'{vals["deeplabv3"] * 100:.1f}%',
+                "U-Net native (superseded)": f'{vals["unet_native"] * 100:.1f}%',
+                "U-Net crop-aligned (this pipeline)": f'{vals["unet_crop_aligned"] * 100:.1f}%',
+            }
+            for name, vals in comp_rows
+        ]
+    )
+    st.dataframe(comp_df, use_container_width=True, hide_index=True)
+    st.markdown(
+        f'<p style="color:var(--text-muted); font-size:0.8rem; line-height:1.5; margin:0.4rem 0 1.5rem;">'
+        f'{per_class["flowering"]["note"]} &middot; {per_class["fruiting"]["note"]}</p>',
         unsafe_allow_html=True,
     )
 

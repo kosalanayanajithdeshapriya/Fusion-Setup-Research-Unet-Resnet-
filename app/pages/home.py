@@ -5,9 +5,9 @@ inference; every other page is informational.
 Model D (the leaf-focused segment-then-classify pipeline) is the featured/
 default architecture: it's shown first in the hero copy, headlines the
 "Final prediction" section with a Recommended ribbon, and leads the model
-comparison grid — per its real, deployment-realistic 85.0% full-pipeline
-accuracy (see inputs/leaf_pipeline_metadata.json). Models A/B/C remain fully
-shown as the underlying ablation/comparison study.
+comparison grid — per its real, deployment-realistic full-pipeline accuracy
+(see inputs/leaf_pipeline_metadata.json's comparison_table). Models A/B/C
+remain fully shown as the underlying ablation/comparison study.
 """
 import base64
 import io
@@ -21,7 +21,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "app"))
-from common import MODEL_ORDER, get_hero_photo_uris, get_lpf_ranges, get_test_accuracy  # noqa: E402
+from common import MODEL_ORDER, get_hero_photo_uris, get_leaf_pipeline_metadata, get_lpf_ranges, get_test_accuracy  # noqa: E402
 from inference import FusionPredictor  # noqa: E402
 from ui_theme import (  # noqa: E402
     MODEL_META,
@@ -100,6 +100,7 @@ cta_buttons = [
 
 hero_uris = get_hero_photo_uris()
 lpf_ranges = get_lpf_ranges()
+acc_d = get_test_accuracy("D_leaf_pipeline")
 
 col_text, col_ranges, col_photo = st.columns([1.15, 0.62, 1], gap="medium")
 with col_text:
@@ -109,10 +110,11 @@ with col_text:
           Tomato Leaf Density-Based Growth <span class="accent" style="color:var(--brand-terracotta)">Stage Detection</span>
         </h1>
         <p style="color:var(--text-secondary); margin:0.8rem 0 0; font-size:0.98rem; max-width:520px;">
-          A DeepLabV3 segmentation stage masks out the background, then a ResNet50 classifier
-          reads growth stage from leaf material only — no shortcut through greenhouse or pot
-          context available, which is why its 85% test accuracy is the most realistic number
-          across all four models compared here.
+          A U-Net segmentation stage masks out the background — using the same crop-aligned
+          preprocessing as the classifier, so the mask actually lines up with what it sees —
+          then a ResNet50 classifier reads growth stage from leaf material only. No shortcut
+          through greenhouse or pot context available, which is why its {f"{acc_d:.1f}%" if acc_d else "—"} test
+          accuracy is the most realistic number across all four models compared here.
         </p>
         {feature_row_html(feature_items)}
         {cta_row_html(cta_buttons)}
@@ -144,7 +146,7 @@ with col_upload:
 with col_how:
     steps = [
         ("upload", "Upload Image", "Input a single tomato plant image, any size"),
-        ("layers", "Segment Plant Region", "DeepLabV3 (ResNet50 backbone) predicts a binary plant/background mask"),
+        ("layers", "Segment Plant Region", "U-Net predicts a binary plant/background mask on a crop-aligned 224×224 image"),
         ("shield-check", "Mask & Classify", "Background is zeroed out; ResNet50 classifies from leaf material only"),
         ("bar-chart", "Stage Prediction", "Growth stage + confidence, robust to background/environment changes"),
     ]
@@ -153,7 +155,6 @@ with col_how:
         unsafe_allow_html=True,
     )
 
-acc_d = get_test_accuracy("D_leaf_pipeline")
 stats = [
     ("image", "982", "Total Images", "--model-a"),
     ("leaf", "4", "Growth Stages", "--model-b"),
@@ -200,7 +201,7 @@ with col_img:
     )
 with col_leaf_mask:
     st.markdown(
-        f'<div class="card">{card_title_html("shield-check", "DeepLabV3 plant mask", "--model-d")}'
+        f'<div class="card">{card_title_html("shield-check", "U-Net plant mask (crop-aligned)", "--model-d")}'
         f'<p class="subtitle">Model D\'s segmentation stage</p>'
         f'{photo_frame_html(leaf_mask_thumb)}</div>',
         unsafe_allow_html=True,
@@ -235,6 +236,10 @@ st.markdown(
     </div>''',
     unsafe_allow_html=True,
 )
+leaf_meta = get_leaf_pipeline_metadata()
+_ct = leaf_meta["comparison_table"] if leaf_meta else None
+_deeplab_acc = _ct["full_pipeline_test_accuracy"]["deeplabv3"] * 100 if _ct else None
+_native_acc = _ct["full_pipeline_test_accuracy"]["unet_native"] * 100 if _ct else None
 st.markdown(
     f'''<div class="card" style="border-left: 3px solid var(--model-d);">
       <p style="margin:0; color:var(--text-secondary); font-size:0.85rem; line-height:1.55;">
@@ -242,9 +247,15 @@ st.markdown(
       can score higher in raw accuracy, but ablation testing found it partly relies on
       background/greenhouse context — accuracy on the fruiting class collapsed to 0% once
       background was removed at evaluation time. This pipeline masks the background out
-      <i>before</i> classifying, so that shortcut isn't available — making its 85.0% test
-      accuracy (using the segmentation model's own predicted masks, not hand-drawn ones) a
-      more honest estimate of performance on new photos from different environments.
+      <i>before</i> classifying, so that shortcut isn't available. It also fixes a subtler issue:
+      an earlier version fed the segmentation stage different preprocessing than the classifier
+      expected, misaligning the predicted mask with the image the classifier actually sees —
+      correcting that alone raised full-pipeline accuracy from {f"{_native_acc:.1f}%" if _native_acc else "—"}
+      to {f"{acc_d:.1f}%" if acc_d else "—"} with no change in segmentation quality. All told, its
+      {f"{acc_d:.1f}%" if acc_d else "—"} test accuracy — using the segmentation model's own predicted
+      masks, not hand-drawn ones, and beating the previously-featured DeepLabV3-based pipeline's
+      {f"{_deeplab_acc:.1f}%" if _deeplab_acc else "—"} — is the most realistic estimate of
+      performance on new photos from different environments.
       </p>
     </div>''',
     unsafe_allow_html=True,

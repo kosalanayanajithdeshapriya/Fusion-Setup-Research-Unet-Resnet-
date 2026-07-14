@@ -80,7 +80,7 @@ MODEL_META = {
     },
     "D_leaf_pipeline": {
         "var": "--model-d", "short": "D", "label": "Leaf-Focused Pipeline",
-        "eyebrow": "MODEL D · SEGMENT + CLASSIFY", "subtitle": "DeepLabV3 leaf mask + masked ResNet50",
+        "eyebrow": "MODEL D · SEGMENT + CLASSIFY", "subtitle": "U-Net leaf mask (crop-aligned) + masked ResNet50",
         "recommended": True,
     },
 }
