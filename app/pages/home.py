@@ -114,7 +114,7 @@ with col_text:
           preprocessing as the classifier, so the mask actually lines up with what it sees —
           then a ResNet50 classifier reads growth stage from leaf material only. No shortcut
           through greenhouse or pot context available, which is why its {f"{acc_d:.1f}%" if acc_d else "—"} test
-          accuracy is the most realistic number across all four models compared here.
+          accuracy is the most realistic number across all five models compared here.
         </p>
         {feature_row_html(feature_items)}
         {cta_row_html(cta_buttons)}
@@ -253,8 +253,8 @@ st.markdown(
       correcting that alone raised full-pipeline accuracy from {f"{_native_acc:.1f}%" if _native_acc else "—"}
       to {f"{acc_d:.1f}%" if acc_d else "—"} with no change in segmentation quality. All told, its
       {f"{acc_d:.1f}%" if acc_d else "—"} test accuracy — using the segmentation model's own predicted
-      masks, not hand-drawn ones, and beating the previously-featured DeepLabV3-based pipeline's
-      {f"{_deeplab_acc:.1f}%" if _deeplab_acc else "—"} — is the most realistic estimate of
+      masks, not hand-drawn ones, and beating Model E's (the second-best, DeepLabV3-based pipeline
+      below) {f"{_deeplab_acc:.1f}%" if _deeplab_acc else "—"} — is the most realistic estimate of
       performance on new photos from different environments.
       </p>
     </div>''',
@@ -271,7 +271,7 @@ if len(set(predicted_classes.values())) > 1:
 else:
     st.markdown(
         f'<div class="agree-banner ok">{icon_svg("check-circle", size=17)} '
-        f'All four models agree on this prediction.</div>',
+        f'All five models agree on this prediction.</div>',
         unsafe_allow_html=True,
     )
 
@@ -291,14 +291,20 @@ st.markdown(
     f'<div class="section-title">{icon_svg("bar-chart", size=17)} Model comparison</div>',
     unsafe_allow_html=True,
 )
-cols = st.columns(4)
+cols = st.columns(len(MODEL_ORDER))
 for col, name in zip(cols, MODEL_ORDER):
     pred = predictions[name]
     meta = MODEL_META[name]
     with col:
         recommended = meta.get("recommended", False)
+        second_best = meta.get("second_best", False)
         card_class = "card model-card recommended" if recommended else "card model-card"
-        ribbon = recommended_ribbon_html() if recommended else ""
+        if recommended:
+            ribbon = recommended_ribbon_html("Recommended", accent_var="--model-d")
+        elif second_best:
+            ribbon = recommended_ribbon_html("2nd Best", accent_var="--model-e", icon="check-circle")
+        else:
+            ribbon = ""
         st.markdown(
             f'<div class="{card_class}" style="--card-accent: var({meta["var"]});">'
             f'{ribbon}'

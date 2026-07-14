@@ -29,8 +29,10 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 # Model D is featured/default per its real, deployment-realistic accuracy
-# (see get_leaf_pipeline_metadata) — listed first everywhere.
-MODEL_ORDER = ["D_leaf_pipeline", "A_resnet_only", "B_lpf_only", "C_fused"]
+# (see get_leaf_pipeline_metadata) — listed first everywhere. Model E (the
+# earlier DeepLabV3-based leaf pipeline) is the second-best model — same
+# classifier, an older segmenter — listed right after D.
+MODEL_ORDER = ["D_leaf_pipeline", "E_deeplab_pipeline", "A_resnet_only", "B_lpf_only", "C_fused"]
 
 
 @st.cache_data
@@ -96,6 +98,12 @@ def get_test_accuracy(model_key):
         if meta is None:
             return None
         return meta["comparison_table"]["full_pipeline_test_accuracy"]["unet_crop_aligned"] * 100
+
+    if model_key == "E_deeplab_pipeline":
+        meta = get_leaf_pipeline_metadata()
+        if meta is None:
+            return None
+        return meta["comparison_table"]["full_pipeline_test_accuracy"]["deeplabv3"] * 100
 
     from ui_theme import MODEL_META
     stats = get_comparison_stats()

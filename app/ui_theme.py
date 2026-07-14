@@ -83,6 +83,11 @@ MODEL_META = {
         "eyebrow": "MODEL D · SEGMENT + CLASSIFY", "subtitle": "U-Net leaf mask (crop-aligned) + masked ResNet50",
         "recommended": True,
     },
+    "E_deeplab_pipeline": {
+        "var": "--model-e", "short": "E", "label": "DeepLabV3 Pipeline",
+        "eyebrow": "MODEL E · SEGMENT + CLASSIFY", "subtitle": "DeepLabV3 leaf mask + masked ResNet50",
+        "second_best": True,
+    },
 }
 
 CUSTOM_CSS = """
@@ -112,6 +117,7 @@ CUSTOM_CSS = """
   --model-b: #3D7A3D;
   --model-c: #A3195B;
   --model-d: #B45309;
+  --model-e: #0891B2;
 }
 
 /* ============================== page chrome ============================== */
@@ -191,10 +197,10 @@ section[data-testid="stSidebar"] { background: #F6EFE2; }
 .recommended-ribbon {
   position: absolute; top: -11px; right: 1.1rem;
   display: inline-flex; align-items: center; gap: 0.3rem;
-  background: var(--model-d); color: #ffffff;
+  background: var(--ribbon-color, var(--model-d)); color: #ffffff;
   padding: 0.22rem 0.7rem; border-radius: 999px;
   font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
-  box-shadow: 0 4px 10px color-mix(in srgb, var(--model-d) 45%, transparent);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--ribbon-color, var(--model-d)) 45%, transparent);
 }
 .recommended-ribbon .icon { width: 11px; height: 11px; }
 .card h3 {
@@ -661,5 +667,8 @@ def page_header_html(icon_name, title, description, color_var="--brand-terracott
     </div>'''
 
 
-def recommended_ribbon_html(text="Recommended"):
-    return f'<div class="recommended-ribbon">{icon_svg("star", size=11)} {text}</div>'
+def recommended_ribbon_html(text="Recommended", accent_var="--model-d", icon="star"):
+    return (
+        f'<div class="recommended-ribbon" style="--ribbon-color: var({accent_var});">'
+        f'{icon_svg(icon, size=11)} {text}</div>'
+    )

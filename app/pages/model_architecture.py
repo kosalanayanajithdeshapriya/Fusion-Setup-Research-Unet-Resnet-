@@ -22,7 +22,8 @@ st.markdown(
     page_header_html(
         "cpu",
         "Model Architecture",
-        "The recommended leaf-focused pipeline, plus the underlying ResNet50 + U-Net fusion comparison study.",
+        "The recommended and second-best leaf-focused pipelines, plus the underlying ResNet50 + U-Net "
+        "fusion comparison study.",
     ),
     unsafe_allow_html=True,
 )
@@ -61,6 +62,26 @@ if leaf_meta is not None:
             <code>inputs/leaf_pipeline.py</code></li>
             <li><b>Class order:</b> {", ".join(clf['class_names'])} (alphabetical — the trained order,
             not chronological growth order)</li>
+          </ul>
+        </div>''',
+        unsafe_allow_html=True,
+    )
+
+    # ------------------------------ Model E: second-best architecture ------
+    deeplab_seg_iou = ct["segmentation_both_class_mean_iou"]["deeplabv3"] * 100
+    st.markdown(
+        f'''<div class="card model-card" style="--card-accent: var(--model-e);">
+          {recommended_ribbon_html("2nd Best · Model E", accent_var="--model-e", icon="check-circle")}
+          {card_title_html("shield-check", "Model E — DeepLabV3 Segment-then-Classify Pipeline", "--model-e")}
+          <p class="subtitle">The same two-stage design as Model D, with a torchvision DeepLabV3-ResNet50
+          segmenter in place of the U-Net, and the identical classifier checkpoint.</p>
+          <ul style="color:var(--text-secondary); line-height:1.7; margin:0; padding-left:1.1rem; font-size:0.9rem;">
+            <li><b>Segmentation architecture:</b> deeplabv3_resnet50, 2-class head (background / plant-leaf),
+            segmentation mean IoU {deeplab_seg_iou:.1f}%</li>
+            <li><b>Classifier:</b> {clf['note']}</li>
+            <li><b>Why it's second, not first:</b> its native preprocessing doesn't share Model D's
+            crop-alignment fix, so its full-pipeline accuracy ({ct["full_pipeline_test_accuracy"]["deeplabv3"] * 100:.1f}%)
+            trails Model D's {crop_acc:.1f}% despite comparable segmentation quality</li>
           </ul>
         </div>''',
         unsafe_allow_html=True,

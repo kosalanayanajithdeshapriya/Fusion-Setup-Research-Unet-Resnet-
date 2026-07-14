@@ -21,7 +21,7 @@ st.markdown(
         "bar-chart",
         "Results",
         "Test-set ablation study (n = 160, held out) comparing ResNet-only, LPF-only, the fused model, "
-        "and the recommended leaf-focused pipeline.",
+        "and the recommended and second-best leaf-focused pipelines.",
     ),
     unsafe_allow_html=True,
 )
@@ -66,6 +66,28 @@ if leaf_meta is not None:
     )
 
     st.markdown(
+        f'''<div class="card model-card" style="--card-accent: var(--model-e);">
+          {recommended_ribbon_html("2nd Best · Model E", accent_var="--model-e", icon="check-circle")}
+          {card_title_html("shield-check", "Leaf-Focused Pipeline (DeepLabV3 + masked ResNet50)", "--model-e")}
+          <p class="subtitle">The pipeline previously featured as the recommended model — now second-best,
+          using the identical classifier as Model D, just an earlier segmenter.</p>
+          <div class="stats-row" style="border-top:none; padding-top:0; margin-top:0;">
+            <div class="stat-block">
+              <span class="icon-chip" style="--chip-color: var(--model-e)">{icon_svg("check-circle", size=19)}</span>
+              <div><div class="stat-block-value">{deeplab_acc:.1f}%</div>
+              <div class="stat-block-label">Full-pipeline test accuracy</div></div>
+            </div>
+            <div class="stat-block">
+              <span class="icon-chip" style="--chip-color: var(--model-b)">{icon_svg("layers", size=19)}</span>
+              <div><div class="stat-block-value">{ct["segmentation_both_class_mean_iou"]["deeplabv3"] * 100:.1f}%</div>
+              <div class="stat-block-label">Segmentation mean IoU (both classes)</div></div>
+            </div>
+          </div>
+        </div>''',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
         f'<div class="section-title" style="font-size:0.9rem;">{icon_svg("bar-chart", size=15)} '
         f'Segmenter comparison — identical test set, identical classifier</div>',
         unsafe_allow_html=True,
@@ -82,9 +104,9 @@ if leaf_meta is not None:
         [
             {
                 "Metric": name,
-                "DeepLabV3 (previous)": f'{vals["deeplabv3"] * 100:.1f}%',
+                "DeepLabV3 (Model E, 2nd best)": f'{vals["deeplabv3"] * 100:.1f}%',
                 "U-Net native (superseded)": f'{vals["unet_native"] * 100:.1f}%',
-                "U-Net crop-aligned (this pipeline)": f'{vals["unet_crop_aligned"] * 100:.1f}%',
+                "U-Net crop-aligned (Model D, recommended)": f'{vals["unet_crop_aligned"] * 100:.1f}%',
             }
             for name, vals in comp_rows
         ]

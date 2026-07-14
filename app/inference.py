@@ -1,8 +1,9 @@
 """Shared inference logic for the demo UI: runs a single image through all
-four models — A (ResNet-only), B (LPF-only), C (Fused), and D (the
-leaf-focused segment-then-classify pipeline, the recommended model) —
-reusing the exact same checkpoints, scalers, and preprocessing as the
-training pipeline in scripts/ and the standalone leaf_pipeline.py as-is.
+five models — A (ResNet-only), B (LPF-only), C (Fused), D (the crop-aligned
+U-Net leaf-focused pipeline, the recommended model), and E (the earlier
+DeepLabV3-based leaf-focused pipeline, the second-best model) — reusing the
+exact same checkpoints, scalers, and preprocessing as the training pipeline
+in scripts/ and the standalone leaf_pipeline*.py files as-is.
 """
 import json
 import sys
@@ -23,6 +24,7 @@ from resnet_feature_extractor import load_resnet_feature_extractor, PREPROCESS  
 from unet_lpf_extractor import load_unet, compute_lpf  # noqa: E402
 from model_common import MLPHead, MODEL_CONFIGS  # noqa: E402
 import leaf_pipeline  # noqa: E402
+import leaf_pipeline_deeplab  # noqa: E402
 from leaf_pipeline import load_leaf_pipeline  # noqa: E402
 
 CHECKPOINT_DIR = ROOT / "checkpoints"
@@ -50,6 +52,27 @@ def predict_leaf_pipeline_with_mask(image_pil, unet_model, classifier, device):
     mask_np = pred_mask[0, 0].cpu().numpy()
     label = leaf_pipeline.CLASS_NAMES[pred_idx]
     prob_dict = {c: float(p) for c, p in zip(leaf_pipeline.CLASS_NAMES, probs.tolist())}
+    return label, prob_dict, mask_np
+
+
+@torch.no_grad()
+def predict_deeplab_pipeline_with_mask(image_pil, seg_model, classifier, device):
+    """Mirrors leaf_pipeline_deeplab.predict_growth_stage() exactly (same
+    transforms, same normalization, same class order) but additionally returns
+    the predicted plant/background mask. torchvision's DeepLabV3 returns a
+    dict with an "out" key (2-channel logits), unlike the U-Net pipeline's
+    plain 1-channel tensor, so the mask here is argmax, not sigmoid+threshold."""
+    raw = leaf_pipeline_deeplab.RAW_TRANSFORM(image_pil.convert("RGB")).unsqueeze(0).to(device)
+    norm = leaf_pipeline_deeplab.NORMALIZE(raw)
+    pred_mask = seg_model(norm)["out"].argmax(dim=1, keepdim=True).float()
+    masked_raw = raw * pred_mask
+    masked_norm = leaf_pipeline_deeplab.NORMALIZE(masked_raw)
+    logits = classifier(masked_norm)
+    probs = torch.softmax(logits, dim=1)[0].cpu().numpy()
+    pred_idx = int(probs.argmax())
+    mask_np = pred_mask[0, 0].cpu().numpy()
+    label = leaf_pipeline_deeplab.CLASS_NAMES[pred_idx]
+    prob_dict = {c: float(p) for c, p in zip(leaf_pipeline_deeplab.CLASS_NAMES, probs.tolist())}
     return label, prob_dict, mask_np
 
 
@@ -82,6 +105,15 @@ class FusionPredictor:
 
         self.leaf_seg_model, self.leaf_classifier = load_leaf_pipeline(
             str(INPUTS_DIR / "unet_leaf_seg.pth"),
+            str(INPUTS_DIR / "resnet50_leaf_classifier.pth"),
+            device=self.device,
+        )
+
+        # Model E (second-best) reuses the identical classifier weights loaded
+        # above for Model D (confirmed via metadata.json: same checkpoint,
+        # reused across all segmenter variants) — only the segmenter differs.
+        self.deeplab_seg_model, _ = leaf_pipeline_deeplab.load_leaf_pipeline(
+            str(INPUTS_DIR / "deeplabv3_leaf_seg.pth"),
             str(INPUTS_DIR / "resnet50_leaf_classifier.pth"),
             device=self.device,
         )
@@ -132,10 +164,21 @@ class FusionPredictor:
             "probabilities": leaf_probs,
         }
 
+        deeplab_label, deeplab_probs, deeplab_mask = predict_deeplab_pipeline_with_mask(
+            img, self.deeplab_seg_model, self.leaf_classifier, self.device
+        )
+        predictions["E_deeplab_pipeline"] = {
+            "display_name": "Model E (DeepLabV3 Leaf-Focused Pipeline)",
+            "predicted_class": deeplab_label,
+            "confidence": deeplab_probs[deeplab_label],
+            "probabilities": deeplab_probs,
+        }
+
         return {
             "lpf": lpf,
             "mask": mask,
             "leaf_mask": leaf_mask,
+            "deeplab_mask": deeplab_mask,
             "class_names": self.class_names,
             "predictions": predictions,
         }
