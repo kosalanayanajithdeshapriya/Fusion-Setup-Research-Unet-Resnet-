@@ -3,9 +3,12 @@
 !inputs/*.py
 !inputs/*.json
 !inputs/*.pth
+!inputs/lpf_full_dataset.csv
 !scripts/model_common.py
 !checkpoints/
 !results/tables/comparison_summary.csv
+!results/tables/developing_flowering_boundary.csv
+!results/plots/
 !.streamlit/
 !requirements.txt
 !Dockerfile

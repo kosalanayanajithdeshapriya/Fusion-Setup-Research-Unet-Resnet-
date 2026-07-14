@@ -19,10 +19,11 @@ RUN pip install --no-cache-dir --extra-index-url https://download.pytorch.org/wh
     && pip install --no-cache-dir -r requirements.txt
 
 COPY app/ app/
-COPY inputs/*.py inputs/*.json inputs/*.pth inputs/
+COPY inputs/*.py inputs/*.json inputs/*.pth inputs/lpf_full_dataset.csv inputs/
 COPY scripts/model_common.py scripts/model_common.py
 COPY checkpoints/ checkpoints/
-COPY results/tables/comparison_summary.csv results/tables/comparison_summary.csv
+COPY results/tables/comparison_summary.csv results/tables/developing_flowering_boundary.csv results/tables/
+COPY results/plots/ results/plots/
 COPY .streamlit/ .streamlit/
 
 EXPOSE 8080
