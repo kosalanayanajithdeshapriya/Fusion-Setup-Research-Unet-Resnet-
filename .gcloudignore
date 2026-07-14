@@ -1,7 +1,6 @@
 tomato final dataset/
 outputs/
-results/plots/
-inputs/lpf_full_dataset*.csv
+inputs/lpf_full_dataset_backup_before_refresh.csv
 scripts/0*.py
 scripts/dataset_index.py
 .git
