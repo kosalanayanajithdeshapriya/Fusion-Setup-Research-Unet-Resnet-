@@ -377,7 +377,10 @@ nav[data-testid="stTopNav"] a[aria-selected="true"] { color: var(--brand-green) 
 .hero-overlay-bar-fill { height: 100%; border-radius: 999px; background: var(--brand-green); }
 
 /* ============================== stage range side cards ============================== */
-.stage-range-list { display: flex; flex-direction: column; gap: 0.55rem; flex: 0 0 auto; width: 200px; }
+/* width:100% (not a fixed px) so this always fills whatever Streamlit column
+   it's placed in — including the narrow 640-1024px band where st.columns
+   keeps the hero's 3 columns side-by-side but each one is fairly narrow. */
+.stage-range-list { display: flex; flex-direction: column; gap: 0.55rem; width: 100%; }
 .stage-range-card {
   background: var(--surface-card); border-radius: 12px; padding: 0.55rem 0.85rem;
   box-shadow: var(--shadow); border: 1.5px solid transparent;
@@ -429,26 +432,29 @@ div[data-testid="stSpinner"] { color: var(--brand-terracotta); font-weight: 600;
 div[data-testid="stSpinner"] svg { color: var(--brand-terracotta) !important; }
 
 /* ============================== tablet tier (<=768px) ============================== */
+/* Note: st.columns() itself only stacks to full-width below ~640px (Streamlit's
+   own internal breakpoint, not ours) — between 641-768px a 3-column row like the
+   hero is still side-by-side, just narrower. Rules here must stay correct for
+   that in-between "narrow side-by-side column" state, not assume full width. */
 @media (max-width: 768px) {
-  /* .hero-text's flex-basis (480px) sizes the row layout's WIDTH on desktop;
-     once .hero-row switches to a column, that same basis would size HEIGHT
-     instead and force a large empty gap, so it must be reset here. */
-  .hero-row { flex-direction: column; gap: 1.2rem; }
-  .hero-text { flex: 1 1 auto; }
-  .hero-photo-grid { width: 100%; flex: 1 1 auto; display: flex; grid-template-columns: unset; overflow-x: auto; padding-bottom: 0.35rem; scroll-snap-type: x mandatory; }
-  .hero-photo-card { flex: 0 0 108px; scroll-snap-align: start; }
   .insight-panel { flex-direction: column; }
   .insight-connector { align-self: center; transform: rotate(90deg); }
 
   .brand-bar { padding: 0.7rem 0.1rem; }
   .brand-tagline { flex-basis: 100%; order: 3; }
-  .home-hero-row { flex-direction: column; }
   .hero-photo-hero img { min-height: 220px; }
-  .stage-range-list { width: 100%; flex-direction: row; overflow-x: auto; }
-  .stage-range-card { flex: 0 0 150px; flex-direction: column; align-items: flex-start; gap: 0.2rem; }
   .step-flow { flex-direction: column; }
   .step-arrow { display: none; }
   .stats-row { gap: 1rem; }
+}
+
+/* ============================== hero-columns-stacked tier (<=640px) ============
+   Matches Streamlit's own st.columns() stacking breakpoint exactly, so these
+   rules only kick in once the hero's text/ranges/photo columns are genuinely
+   full-width and stacked — not while they're still narrow side-by-side. */
+@media (max-width: 640px) {
+  .stage-range-list { flex-direction: row; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 0.3rem; }
+  .stage-range-card { flex: 0 0 150px; flex-direction: column; align-items: flex-start; gap: 0.2rem; scroll-snap-align: start; }
 }
 
 /* ============================== phone tier (<=480px) ============================== */

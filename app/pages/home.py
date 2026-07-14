@@ -101,7 +101,7 @@ cta_buttons = [
 hero_uris = get_hero_photo_uris()
 lpf_ranges = get_lpf_ranges()
 
-col_text, col_photo, col_ranges = st.columns([1.15, 1, 0.62], gap="medium")
+col_text, col_ranges, col_photo = st.columns([1.15, 0.62, 1], gap="medium")
 with col_text:
     st.markdown(
         f'''{eyebrow_html(icon_svg("star", size=12) + " RECOMMENDED &middot; LEAF-FOCUSED SEGMENT + CLASSIFY PIPELINE")}
