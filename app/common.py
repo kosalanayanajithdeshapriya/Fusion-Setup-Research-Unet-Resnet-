@@ -117,10 +117,16 @@ def get_test_accuracy(model_key):
     return float(row.iloc[0]["test_accuracy"]) * 100
 
 
+@st.cache_data
+def get_favicon_uri():
+    return "data:image/png;base64," + base64.b64encode(FAVICON.read_bytes()).decode("ascii")
+
+
 def render_brand_bar(icon_svg):
+    favicon_uri = get_favicon_uri()
     st.markdown(
         f'''<div class="brand-bar">
-          <div class="brand-logo">{icon_svg("fruit", size=24)}
+          <div class="brand-logo"><img src="{favicon_uri}" alt="" class="brand-logo-icon"/>
             <span>TomatoGrowth<b>AI</b></span>
           </div>
           <div class="brand-tagline">Leaf Density-Based Growth Stage Detection</div>

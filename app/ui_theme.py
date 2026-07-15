@@ -328,7 +328,7 @@ section[data-testid="stSidebar"] { background: #F6EFE2; }
   font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.15rem;
   color: var(--text-primary); flex: 0 0 auto;
 }
-.brand-logo .icon { color: var(--brand-terracotta); width: 24px; height: 24px; }
+.brand-logo-icon { width: 24px; height: 24px; display: block; }
 .brand-logo b { color: var(--brand-green); font-weight: 800; }
 .brand-tagline { color: var(--text-muted); font-size: 0.82rem; flex: 1 1 auto; }
 .brand-actions { flex: 0 0 auto; }
